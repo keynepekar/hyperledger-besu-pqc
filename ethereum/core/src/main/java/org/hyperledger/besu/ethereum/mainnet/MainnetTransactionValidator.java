@@ -102,34 +102,36 @@ public class MainnetTransactionValidator implements TransactionValidator {
       return signatureResult;
     }
 
-    // ----- PQC -----
-    final Bytes data = transaction.getPayload();
-
-    // baseline ecdsa only kept as fallback
-    if (!data.isEmpty()) {
-      final byte algId = data.get(0); // 1st byte of the payload indicates the algorithm
-      final SignatureAlgorithmPQC pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
-
-      final int sigLen = pqc.signatureLength();
-      final int pubKeyLen = pqc.publicKeyLength();
-
-      if (data.size() < 1 + pubKeyLen + sigLen) {
+    // ----- HYBRID -----
+    if (transaction.getType() == TransactionType.HYBRID) {
+      if (transaction.getPqcAlgorithmId().isEmpty()
+          || transaction.getPqcPublicKey().isEmpty()
+          || transaction.getPqcSignature().isEmpty()) {
         return ValidationResult.invalid(
-            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC payload length");
+            TransactionInvalidReason.INVALID_SIGNATURE, "Missing PQC fields in Hybrid Transaction");
       }
 
-      final Bytes pubKeyBytes = data.slice(1, pubKeyLen);
-      final Bytes sigBytes = data.slice(1 + pubKeyLen, sigLen);
+      final byte algId = transaction.getPqcAlgorithmId().get();
+      final SignatureAlgorithmPQC pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
 
-      // sha256("example")
-      final Bytes originalMessage = Bytes
-          .fromHexString("0x50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c");
-      // todo: use tx hash without the data field in the rlp encoding
+      final Bytes pubKeyBytes = transaction.getPqcPublicKey().get();
+      final Bytes sigBytes = transaction.getPqcSignature().get();
+
+      if (pubKeyBytes.size() != pqc.publicKeyLength()) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC public key length");
+      }
+      if (sigBytes.size() != pqc.signatureLength()) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC signature length");
+      }
 
       final PQCPublicKey publicKey = pqc.createPublicKey(pubKeyBytes);
       final PQCSignature signature = pqc.createSignature(sigBytes);
 
-      final boolean ok = pqc.verify(originalMessage, signature, publicKey);
+      // getSenderRecoveryHash() returns the hash for ECDSA recovery (keccak of new
+      // rlp encoding), also used for building the PQ signature
+      final boolean ok = pqc.verify(transaction.getSenderRecoveryHash(), signature, publicKey);
       if (!ok) {
         LOG.info("PQC signature invalid");
         return ValidationResult.invalid(
@@ -138,7 +140,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
         // LOG.info("PQC signature valid");
       }
     }
-    // ----- PQC -----
+    // ----- HYBRID -----
 
     final TransactionType transactionType = transaction.getType();
     if (!acceptedTransactionTypes.contains(transactionType)) {

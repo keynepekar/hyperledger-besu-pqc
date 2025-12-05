@@ -954,6 +954,19 @@ public class Transaction
             codeDelegationList.orElseThrow(
                 () -> new IllegalStateException(
                     "Developer error: the transaction should be guaranteed to have a code delegations here")));
+      case HYBRID ->
+        hybridPreimage(
+            nonce,
+            maxPriorityFeePerGas,
+            maxFeePerGas,
+            gasLimit,
+            to,
+            value,
+            payload,
+            chainId,
+            accessList,
+            pqcAlgorithmId,
+            pqcPublicKey);
     };
     return preimage;
   }
@@ -1118,6 +1131,39 @@ public class Transaction
           rlpOutput.endList();
         });
     return Bytes.concatenate(Bytes.of(TransactionType.DELEGATE_CODE.getSerializedType()), encoded);
+  }
+
+  private static Bytes hybridPreimage(
+      final long nonce,
+      final Wei maxPriorityFeePerGas,
+      final Wei maxFeePerGas,
+      final long gasLimit,
+      final Optional<Address> to,
+      final Wei value,
+      final Bytes payload,
+      final Optional<BigInteger> chainId,
+      final Optional<List<AccessListEntry>> accessList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey) {
+    final Bytes encoded = RLP.encode(
+        rlpOutput -> {
+          rlpOutput.startList();
+          eip1559PreimageFields(
+              nonce,
+              maxPriorityFeePerGas,
+              maxFeePerGas,
+              gasLimit,
+              to,
+              value,
+              payload,
+              chainId,
+              accessList,
+              rlpOutput);
+          rlpOutput.writeByte(pqcAlgorithmId.orElseThrow());
+          rlpOutput.writeBytes(pqcPublicKey.orElseThrow());
+          rlpOutput.endList();
+        });
+    return Bytes.concatenate(Bytes.of(TransactionType.HYBRID.getSerializedType()), encoded);
   }
 
   @Override
