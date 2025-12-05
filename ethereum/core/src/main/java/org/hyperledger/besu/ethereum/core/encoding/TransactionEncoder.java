@@ -32,25 +32,26 @@ public class TransactionEncoder {
     void encode(Transaction transaction, RLPOutput output);
   }
 
-  private static final ImmutableMap<TransactionType, Encoder> TYPED_TRANSACTION_ENCODERS =
-      ImmutableMap.of(
-          TransactionType.ACCESS_LIST,
-          AccessListTransactionEncoder::encode,
-          TransactionType.EIP1559,
-          EIP1559TransactionEncoder::encode,
-          TransactionType.BLOB,
-          BlobTransactionEncoder::encode,
-          TransactionType.DELEGATE_CODE,
-          CodeDelegationTransactionEncoder::encode);
+  private static final ImmutableMap<TransactionType, Encoder> TYPED_TRANSACTION_ENCODERS = ImmutableMap.of(
+      TransactionType.ACCESS_LIST,
+      AccessListTransactionEncoder::encode,
+      TransactionType.EIP1559,
+      EIP1559TransactionEncoder::encode,
+      TransactionType.BLOB,
+      BlobTransactionEncoder::encode,
+      TransactionType.DELEGATE_CODE,
+      CodeDelegationTransactionEncoder::encode,
+      TransactionType.HYBRID,
+      HybridTransactionEncoder::encode);
 
-  private static final ImmutableMap<TransactionType, Encoder> POOLED_TRANSACTION_ENCODERS =
-      ImmutableMap.of(TransactionType.BLOB, BlobPooledTransactionEncoder::encode);
+  private static final ImmutableMap<TransactionType, Encoder> POOLED_TRANSACTION_ENCODERS = ImmutableMap
+      .of(TransactionType.BLOB, BlobPooledTransactionEncoder::encode);
 
   /**
    * Encodes a transaction into RLP format.
    *
-   * @param transaction the transaction to encode
-   * @param rlpOutput the RLP output stream
+   * @param transaction     the transaction to encode
+   * @param rlpOutput       the RLP output stream
    * @param encodingContext the encoding context
    */
   public static void encodeRLP(
@@ -67,8 +68,8 @@ public class TransactionEncoder {
    * Encodes a transaction into RLP format.
    *
    * @param transactionType the type of the transaction
-   * @param opaqueBytes the bytes of the transaction
-   * @param rlpOutput the RLP output stream
+   * @param opaqueBytes     the bytes of the transaction
+   * @param rlpOutput       the RLP output stream
    */
   public static void encodeRLP(
       final TransactionType transactionType, final Bytes opaqueBytes, final RLPOutput rlpOutput) {
@@ -83,7 +84,7 @@ public class TransactionEncoder {
   /**
    * Encodes a transaction into opaque bytes.
    *
-   * @param transaction the transaction to encode
+   * @param transaction     the transaction to encode
    * @param encodingContext the encoding context
    * @return the encoded transaction as bytes
    */
@@ -98,9 +99,8 @@ public class TransactionEncoder {
       transaction
           .getRawRlp()
           .ifPresentOrElse(
-              (rawRlp) ->
-                  out.writeRLPBytes(
-                      Bytes.concatenate(Bytes.of(transactionType.getSerializedType()), rawRlp)),
+              (rawRlp) -> out.writeRLPBytes(
+                  Bytes.concatenate(Bytes.of(transactionType.getSerializedType()), rawRlp)),
               () -> {
                 out.writeByte(transaction.getType().getSerializedType());
                 encoder.encode(transaction, out);

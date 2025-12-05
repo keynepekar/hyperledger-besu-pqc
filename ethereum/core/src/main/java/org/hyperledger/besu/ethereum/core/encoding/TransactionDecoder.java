@@ -34,21 +34,23 @@ public class TransactionDecoder {
     Transaction decode(Bytes input);
   }
 
-  private static final EnumMap<TransactionType, Decoder> TRANSACTION_DECODERS =
-      new EnumMap<>(
-          Map.of(
-              TransactionType.FRONTIER, FrontierTransactionDecoder::decode,
-              TransactionType.ACCESS_LIST, AccessListTransactionDecoder::decode,
-              TransactionType.EIP1559, EIP1559TransactionDecoder::decode,
-              TransactionType.BLOB, BlobTransactionDecoder::decode,
-              TransactionType.DELEGATE_CODE, CodeDelegationTransactionDecoder::decode));
+  private static final EnumMap<TransactionType, Decoder> TRANSACTION_DECODERS = new EnumMap<>(
+      Map.of(
+          TransactionType.FRONTIER, FrontierTransactionDecoder::decode,
+          TransactionType.ACCESS_LIST, AccessListTransactionDecoder::decode,
+          TransactionType.EIP1559, EIP1559TransactionDecoder::decode,
+          TransactionType.BLOB, BlobTransactionDecoder::decode,
+          TransactionType.DELEGATE_CODE, CodeDelegationTransactionDecoder::decode,
+          TransactionType.HYBRID, HybridTransactionDecoder::decode));
 
-  private static final EnumMap<TransactionType, Decoder> POOLED_TRANSACTION_DECODERS =
-      new EnumMap<>(Map.of(TransactionType.BLOB, BlobPooledTransactionDecoder::decode));
+  private static final EnumMap<TransactionType, Decoder> POOLED_TRANSACTION_DECODERS = new EnumMap<>(
+      Map.of(TransactionType.BLOB, BlobPooledTransactionDecoder::decode));
 
   /**
-   * Decodes an RLP input into a transaction. If the input represents a typed transaction, it uses
-   * the appropriate decoder for that type. Otherwise, it uses the frontier decoder.
+   * Decodes an RLP input into a transaction. If the input represents a typed
+   * transaction, it uses
+   * the appropriate decoder for that type. Otherwise, it uses the frontier
+   * decoder.
    *
    * @param rlpInput the RLP input
    * @return the decoded transaction
@@ -63,7 +65,8 @@ public class TransactionDecoder {
   }
 
   /**
-   * Decodes a typed transaction from an RLP input. It first reads the transaction type from the
+   * Decodes a typed transaction from an RLP input. It first reads the transaction
+   * type from the
    * input, then uses the appropriate decoder for that type.
    *
    * @param rlpInput the RLP input
@@ -75,38 +78,44 @@ public class TransactionDecoder {
     final Bytes typedTransactionBytes = rlpInput.readBytes();
 
     // Determine the transaction type from the typed transaction bytes
-    TransactionType transactionType =
-        getTransactionType(typedTransactionBytes)
-            .orElseThrow((() -> new IllegalArgumentException("Unsupported transaction type")));
+    TransactionType transactionType = getTransactionType(typedTransactionBytes)
+        .orElseThrow((() -> new IllegalArgumentException("Unsupported transaction type")));
     return decodeTransaction(typedTransactionBytes, transactionType, context);
   }
 
   /**
-   * Decodes a typed transaction. The method first slices the transaction bytes to exclude the
-   * transaction type, then uses the appropriate decoder for the transaction type to decode the
+   * Decodes a typed transaction. The method first slices the transaction bytes to
+   * exclude the
+   * transaction type, then uses the appropriate decoder for the transaction type
+   * to decode the
    * remaining bytes.
    *
    * @param transactionBytes the transaction bytes
-   * @param transactionType the type of the transaction
-   * @param context the encoding context
+   * @param transactionType  the type of the transaction
+   * @param context          the encoding context
    * @return the decoded transaction
    */
   private static Transaction decodeTransaction(
       final Bytes transactionBytes,
       final TransactionType transactionType,
       final EncodingContext context) {
-    // Slice the transaction bytes to exclude the transaction type and prepare for decoding
-    // Use the appropriate decoder for the transaction type to decode the remaining bytes
+    // Slice the transaction bytes to exclude the transaction type and prepare for
+    // decoding
+    // Use the appropriate decoder for the transaction type to decode the remaining
+    // bytes
     return getDecoder(transactionType, context).decode(transactionBytes);
   }
 
   /**
-   * Decodes a transaction from opaque bytes. The method first determines the transaction type from
-   * the bytes. If the type is present, it delegates the decoding process to the appropriate decoder
-   * for that type. If the type is not present, it decodes the bytes as an RLP input.
+   * Decodes a transaction from opaque bytes. The method first determines the
+   * transaction type from
+   * the bytes. If the type is present, it delegates the decoding process to the
+   * appropriate decoder
+   * for that type. If the type is not present, it decodes the bytes as an RLP
+   * input.
    *
    * @param opaqueBytes the opaque bytes
-   * @param context the encoding context
+   * @param context     the encoding context
    * @return the decoded transaction
    */
   public static Transaction decodeOpaqueBytes(
@@ -124,13 +133,16 @@ public class TransactionDecoder {
   }
 
   /**
-   * Retrieves the transaction type from the provided bytes. The method attempts to extract the
-   * first byte from the input bytes and interpret it as a transaction type. If the byte does not
+   * Retrieves the transaction type from the provided bytes. The method attempts
+   * to extract the
+   * first byte from the input bytes and interpret it as a transaction type. If
+   * the byte does not
    * correspond to a valid transaction type, the method returns an empty Optional.
    *
    * @param opaqueBytes the bytes from which to extract the transaction type
-   * @return an Optional containing the TransactionType if the first byte of the input corresponds
-   *     to a valid transaction type, or an empty Optional if it does not
+   * @return an Optional containing the TransactionType if the first byte of the
+   *         input corresponds
+   *         to a valid transaction type, or an empty Optional if it does not
    */
   private static Optional<TransactionType> getTransactionType(final Bytes opaqueBytes) {
     byte transactionTypeByte = opaqueBytes.get(0);
@@ -140,11 +152,16 @@ public class TransactionDecoder {
   /**
    * Checks if the given RLP input is a typed transaction.
    *
-   * <p>See EIP-2718
+   * <p>
+   * See EIP-2718
    *
-   * <p>If it starts with a value in the range [0, 0x7f] then it is a new transaction type
+   * <p>
+   * If it starts with a value in the range [0, 0x7f] then it is a new transaction
+   * type
    *
-   * <p>if it starts with a value in the range [0xc0, 0xfe] then it is a legacy transaction type
+   * <p>
+   * if it starts with a value in the range [0xc0, 0xfe] then it is a legacy
+   * transaction type
    *
    * @param rlpInput the RLP input
    * @return true if the RLP input is a typed transaction, false otherwise
@@ -154,8 +171,10 @@ public class TransactionDecoder {
   }
 
   /**
-   * Gets the decoder for a given transaction type and encoding context. If the context is
-   * POOLED_TRANSACTION, it uses the network decoder for the type. Otherwise, it uses the typed
+   * Gets the decoder for a given transaction type and encoding context. If the
+   * context is
+   * POOLED_TRANSACTION, it uses the network decoder for the type. Otherwise, it
+   * uses the typed
    * decoder.
    *
    * @param transactionType the transaction type
