@@ -32,6 +32,13 @@ import org.hyperledger.besu.ethereum.transaction.TransactionInvalidReason;
 import org.hyperledger.besu.evm.account.Account;
 import org.hyperledger.besu.evm.gascalculator.GasCalculator;
 
+// PQC
+import org.apache.tuweni.bytes.Bytes;
+import org.hyperledger.besu.crypto.pqc.PQCPublicKey;
+import org.hyperledger.besu.crypto.pqc.PQCSignature;
+import org.hyperledger.besu.crypto.pqc.SignatureAlgorithmPQC;
+import org.hyperledger.besu.crypto.pqc.SignatureAlgorithmFactoryPQC;
+
 import java.math.BigInteger;
 import java.util.Optional;
 import java.util.Set;
@@ -42,7 +49,9 @@ import org.slf4j.LoggerFactory;
 /**
  * Validates a transaction based on Frontier protocol runtime requirements.
  *
- * <p>The {@link MainnetTransactionValidator} performs the intrinsic gas cost check on the given
+ * <p>
+ * The {@link MainnetTransactionValidator} performs the intrinsic gas cost check
+ * on the given
  * {@link Transaction}.
  */
 public class MainnetTransactionValidator implements TransactionValidator {
@@ -79,8 +88,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
     this.chainId = chainId;
     this.acceptedTransactionTypes = acceptedTransactionTypes;
     this.maxInitcodeSize = maxInitcodeSize;
-    this.blobsValidator =
-        new MainnetBlobsValidator(acceptedBlobVersions, gasLimitCalculator, gasCalculator);
+    this.blobsValidator = new MainnetBlobsValidator(acceptedBlobVersions, gasLimitCalculator, gasCalculator);
   }
 
   @Override
@@ -89,11 +97,48 @@ public class MainnetTransactionValidator implements TransactionValidator {
       final Optional<Wei> baseFee,
       final Optional<Wei> blobFee,
       final TransactionValidationParams transactionValidationParams) {
-    final ValidationResult<TransactionInvalidReason> signatureResult =
-        validateTransactionSignature(transaction);
+    final ValidationResult<TransactionInvalidReason> signatureResult = validateTransactionSignature(transaction);
     if (!signatureResult.isValid()) {
       return signatureResult;
     }
+
+    // ----- PQC -----
+    final Bytes data = transaction.getPayload();
+
+    // baseline ecdsa only kept as fallback
+    if (!data.isEmpty()) {
+      final byte algId = data.get(0); // 1st byte of the payload indicates the algorithm
+      final SignatureAlgorithmPQC pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
+
+      final int sigLen = pqc.signatureLength();
+      final int pubKeyLen = pqc.publicKeyLength();
+
+      if (data.size() < 1 + pubKeyLen + sigLen) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC payload length");
+      }
+
+      final Bytes pubKeyBytes = data.slice(1, pubKeyLen);
+      final Bytes sigBytes = data.slice(1 + pubKeyLen, sigLen);
+
+      // sha256("example")
+      final Bytes originalMessage = Bytes
+          .fromHexString("0x50d858e0985ecc7f60418aaf0cc5ab587f42c2570a884095a9e8ccacd0f6545c");
+      // todo: use tx hash without the data field in the rlp encoding
+
+      final PQCPublicKey publicKey = pqc.createPublicKey(pubKeyBytes);
+      final PQCSignature signature = pqc.createSignature(sigBytes);
+
+      final boolean ok = pqc.verify(originalMessage, signature, publicKey);
+      if (!ok) {
+        LOG.info("PQC signature invalid");
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "PQC signature invalid");
+      } else {
+        // LOG.info("PQC signature valid");
+      }
+    }
+    // ----- PQC -----
 
     final TransactionType transactionType = transaction.getType();
     if (!acceptedTransactionTypes.contains(transactionType)) {
@@ -117,8 +162,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
     }
 
     if (transactionType.supportsBlob()) {
-      final ValidationResult<TransactionInvalidReason> blobTransactionResult =
-          blobsValidator.validate(transaction);
+      final ValidationResult<TransactionInvalidReason> blobTransactionResult = blobsValidator.validate(transaction);
       if (!blobTransactionResult.isValid()) {
         LOG.debug(
             "Blob transaction {} validation failed: {}",
@@ -137,8 +181,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
     }
 
     if (transactionType == TransactionType.DELEGATE_CODE) {
-      ValidationResult<TransactionInvalidReason> codeDelegationValidation =
-          validateCodeDelegation(transaction);
+      ValidationResult<TransactionInvalidReason> codeDelegationValidation = validateCodeDelegation(transaction);
       if (!codeDelegationValidation.isValid()) {
         return codeDelegationValidation;
       }
@@ -161,31 +204,30 @@ public class MainnetTransactionValidator implements TransactionValidator {
           "transaction code delegation transactions must have a to address");
     }
 
-    final Optional<ValidationResult<TransactionInvalidReason>> validationResult =
-        transaction
-            .getCodeDelegationList()
-            .map(
-                codeDelegations -> {
-                  for (CodeDelegation codeDelegation : codeDelegations) {
-                    if (codeDelegation.chainId().compareTo(TWO_POW_256) >= 0) {
-                      throw new IllegalArgumentException(
-                          "Invalid 'chainId' value, should be < 2^256 but got "
-                              + codeDelegation.chainId());
-                    }
+    final Optional<ValidationResult<TransactionInvalidReason>> validationResult = transaction
+        .getCodeDelegationList()
+        .map(
+            codeDelegations -> {
+              for (CodeDelegation codeDelegation : codeDelegations) {
+                if (codeDelegation.chainId().compareTo(TWO_POW_256) >= 0) {
+                  throw new IllegalArgumentException(
+                      "Invalid 'chainId' value, should be < 2^256 but got "
+                          + codeDelegation.chainId());
+                }
 
-                    if (codeDelegation.r().compareTo(TWO_POW_256) >= 0) {
-                      throw new IllegalArgumentException(
-                          "Invalid 'r' value, should be < 2^256 but got " + codeDelegation.r());
-                    }
+                if (codeDelegation.r().compareTo(TWO_POW_256) >= 0) {
+                  throw new IllegalArgumentException(
+                      "Invalid 'r' value, should be < 2^256 but got " + codeDelegation.r());
+                }
 
-                    if (codeDelegation.s().compareTo(TWO_POW_256) >= 0) {
-                      throw new IllegalArgumentException(
-                          "Invalid 's' value, should be < 2^256 but got " + codeDelegation.s());
-                    }
-                  }
+                if (codeDelegation.s().compareTo(TWO_POW_256) >= 0) {
+                  throw new IllegalArgumentException(
+                      "Invalid 's' value, should be < 2^256 but got " + codeDelegation.s());
+                }
+              }
 
-                  return ValidationResult.valid();
-                });
+              return ValidationResult.valid();
+            });
 
     if (validationResult.isPresent() && !validationResult.get().isValid()) {
       return validationResult.get();
@@ -217,11 +259,10 @@ public class MainnetTransactionValidator implements TransactionValidator {
       // assert transaction.max_fee_per_gas >= transaction.max_priority_fee_per_gas
       if (transaction.getType().supports1559FeeMarket()
           && transaction
-                  .getMaxPriorityFeePerGas()
-                  .get()
-                  .getAsBigInteger()
-                  .compareTo(transaction.getMaxFeePerGas().get().getAsBigInteger())
-              > 0) {
+              .getMaxPriorityFeePerGas()
+              .get()
+              .getAsBigInteger()
+              .compareTo(transaction.getMaxFeePerGas().get().getAsBigInteger()) > 0) {
         return ValidationResult.invalid(
             TransactionInvalidReason.MAX_PRIORITY_FEE_PER_GAS_EXCEEDS_MAX_FEE_PER_GAS,
             "max priority fee per gas cannot be greater than max fee per gas");
@@ -253,15 +294,13 @@ public class MainnetTransactionValidator implements TransactionValidator {
       }
     }
 
-    final long baselineGas =
-        clampedAdd(
-            transaction.getAccessList().map(gasCalculator::accessListGasCost).orElse(0L),
-            gasCalculator.delegateCodeGasCost(transaction.codeDelegationListSize()));
-    final long intrinsicGasCostOrFloor =
-        Math.max(
-            gasCalculator.transactionIntrinsicGasCost(transaction, baselineGas),
-            gasCalculator.transactionFloorCost(
-                transaction.getPayload(), transaction.getPayloadZeroBytes()));
+    final long baselineGas = clampedAdd(
+        transaction.getAccessList().map(gasCalculator::accessListGasCost).orElse(0L),
+        gasCalculator.delegateCodeGasCost(transaction.codeDelegationListSize()));
+    final long intrinsicGasCostOrFloor = Math.max(
+        gasCalculator.transactionIntrinsicGasCost(transaction, baselineGas),
+        gasCalculator.transactionFloorCost(
+            transaction.getPayload(), transaction.getPayloadZeroBytes()));
 
     if (Long.compareUnsigned(intrinsicGasCostOrFloor, transaction.getGasLimit()) > 0) {
       return ValidationResult.invalid(
@@ -271,8 +310,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
               intrinsicGasCostOrFloor, transaction.getGasLimit()));
     }
 
-    if (transaction.calculateUpfrontGasCost(transaction.getMaxGasPrice(), Wei.ZERO, 0).bitLength()
-        > 256) {
+    if (transaction.calculateUpfrontGasCost(transaction.getMaxGasPrice(), Wei.ZERO, 0).bitLength() > 256) {
       return ValidationResult.invalid(
           TransactionInvalidReason.UPFRONT_COST_EXCEEDS_UINT256,
           "Upfront gas cost cannot exceed 2^256 Wei");
@@ -293,11 +331,11 @@ public class MainnetTransactionValidator implements TransactionValidator {
     if (sender != null) {
       senderBalance = sender.getBalance();
       senderNonce = sender.getNonce();
-      if (sender.getCodeHash() != null) codeHash = sender.getCodeHash();
+      if (sender.getCodeHash() != null)
+        codeHash = sender.getCodeHash();
     }
 
-    final Wei upfrontCost =
-        transaction.getUpfrontCost(gasCalculator.blobGasCost(transaction.getBlobCount()));
+    final Wei upfrontCost = transaction.getUpfrontCost(gasCalculator.blobGasCost(transaction.getBlobCount()));
     if (!validationParams.allowUnderpriced() && upfrontCost.compareTo(senderBalance) > 0) {
       return ValidationResult.invalid(
           TransactionInvalidReason.UPFRONT_COST_EXCEEDS_BALANCE,
