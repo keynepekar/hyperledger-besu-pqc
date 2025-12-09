@@ -14,6 +14,9 @@
  */
 package org.hyperledger.besu.evm.gascalculator;
 
+import static org.hyperledger.besu.evm.internal.Words.clampedAdd;
+
+import org.hyperledger.besu.datatypes.Transaction;
 import java.util.function.Supplier;
 
 import org.apache.tuweni.units.bigints.UInt256;
@@ -81,11 +84,10 @@ public class LondonGasCalculator extends BerlinGasCalculator {
         }
 
         if (localOriginalValue.equals(newValue)) {
-          refund =
-              refund
-                  + (localOriginalValue.isZero()
-                      ? SSTORE_SET_GAS_LESS_SLOAD_GAS
-                      : SSTORE_RESET_GAS_LESS_SLOAD_GAS);
+          refund = refund
+              + (localOriginalValue.isZero()
+                  ? SSTORE_SET_GAS_LESS_SLOAD_GAS
+                  : SSTORE_RESET_GAS_LESS_SLOAD_GAS);
         }
         return refund;
       }
@@ -95,5 +97,25 @@ public class LondonGasCalculator extends BerlinGasCalculator {
   @Override
   public long getMaxRefundQuotient() {
     return NEW_MAX_REFUND_QUOTIENT;
+  }
+
+  @Override
+  public long transactionIntrinsicGasCost(final Transaction transaction, final long baselineGas) {
+    long cost = super.transactionIntrinsicGasCost(transaction, baselineGas);
+
+    // PQC Gas Cost for Hybrid Transactions (Type 5)
+    // 16gas/B (cost introduced by Istanbul update for non-zero data)
+    if (transaction.getType().equals(org.hyperledger.besu.datatypes.TransactionType.HYBRID)) {
+      long pqcCost = 0L;
+      if (transaction.getPqcPublicKey().isPresent()) {
+        pqcCost += transaction.getPqcPublicKey().get().size() * 16L;
+      }
+      if (transaction.getPqcSignature().isPresent()) {
+        pqcCost += transaction.getPqcSignature().get().size() * 16L;
+      }
+      cost = clampedAdd(cost, pqcCost);
+    }
+
+    return cost;
   }
 }
