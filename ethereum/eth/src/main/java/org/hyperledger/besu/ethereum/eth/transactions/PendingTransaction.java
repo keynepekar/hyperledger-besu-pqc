@@ -45,8 +45,10 @@ import java.util.List;
 import java.util.concurrent.atomic.AtomicLong;
 
 /**
- * Tracks the additional metadata associated with transactions to enable prioritization for mining
- * and deciding which transactions to drop when the transaction pool reaches its size limit.
+ * Tracks the additional metadata associated with transactions to enable
+ * prioritization for mining
+ * and deciding which transactions to drop when the transaction pool reaches its
+ * size limit.
  */
 public abstract class PendingTransaction
     implements org.hyperledger.besu.datatypes.PendingTransaction {
@@ -155,12 +157,13 @@ public abstract class PendingTransaction
 
   private int computeMemorySize() {
     return switch (transaction.getType()) {
-          case FRONTIER -> computeFrontierMemorySize();
-          case ACCESS_LIST -> computeAccessListMemorySize();
-          case EIP1559 -> computeEIP1559MemorySize();
-          case BLOB -> computeBlobMemorySize();
-          case DELEGATE_CODE -> computeDelegateCodeMemorySize();
-        }
+      case FRONTIER -> computeFrontierMemorySize();
+      case ACCESS_LIST -> computeAccessListMemorySize();
+      case EIP1559 -> computeEIP1559MemorySize();
+      case BLOB -> computeBlobMemorySize();
+      case DELEGATE_CODE -> computeDelegateCodeMemorySize();
+      case HYBRID -> computeHybridMemorySize();
+    }
         + PENDING_TRANSACTION_SHALLOW_SIZE;
   }
 
@@ -197,23 +200,38 @@ public abstract class PendingTransaction
     return computeEIP1559MemorySize() + computeCodeDelegationListMemorySize();
   }
 
+  private int computeHybridMemorySize() {
+    // EIP1559 base size
+    int size = computeEIP1559MemorySize();
+
+    // PQC fields size : aldId (1byte) + PK + sig
+    size += 1;
+    if (transaction.getPqcPublicKey().isPresent()) {
+      size += transaction.getPqcPublicKey().get().size();
+    }
+    if (transaction.getPqcSignature().isPresent()) {
+      size += transaction.getPqcSignature().get().size();
+    }
+    return size;
+  }
+
   private int computeBlobWithCommitmentsMemorySize() {
     final int blobCount = transaction.getBlobCount();
 
     return switch (transaction.getBlobsWithCommitments().get().getBlobType()) {
       case KZG_PROOF ->
-          OPTIONAL_SHALLOW_SIZE
-              + BLOBS_WITH_COMMITMENTS_SIZE
-              + calculateListShallowSize(blobCount) // list of KZGProofBundle
-              + BLOB_PROOF_BUNDLE_SIZE_V0 * blobCount;
+        OPTIONAL_SHALLOW_SIZE
+            + BLOBS_WITH_COMMITMENTS_SIZE
+            + calculateListShallowSize(blobCount) // list of KZGProofBundle
+            + BLOB_PROOF_BUNDLE_SIZE_V0 * blobCount;
       case KZG_CELL_PROOFS ->
-          OPTIONAL_SHALLOW_SIZE
-              + BLOBS_WITH_COMMITMENTS_SIZE
-              + calculateListShallowSize(blobCount) // list of KZGProofBundle
-              + (BLOB_PROOF_BUNDLE_SIZE_V1
-                      + KZG_PROOF_CONTAINER_SHALLOW_SIZE
-                      + KZG_PROOF_SIZE * CELL_PROOFS_PER_BLOB)
-                  * blobCount;
+        OPTIONAL_SHALLOW_SIZE
+            + BLOBS_WITH_COMMITMENTS_SIZE
+            + calculateListShallowSize(blobCount) // list of KZGProofBundle
+            + (BLOB_PROOF_BUNDLE_SIZE_V1
+                + KZG_PROOF_CONTAINER_SHALLOW_SIZE
+                + KZG_PROOF_SIZE * CELL_PROOFS_PER_BLOB)
+                * blobCount;
     };
   }
 
@@ -244,9 +262,8 @@ public abstract class PendingTransaction
             al -> {
               int totalSize = OPTIONAL_ACCESS_LIST_SHALLOW_SIZE;
               totalSize += al.size() * ACCESS_LIST_ENTRY_SHALLOW_SIZE;
-              totalSize +=
-                  al.stream().map(AccessListEntry::storageKeys).mapToInt(List::size).sum()
-                      * ACCESS_LIST_STORAGE_KEY_SIZE;
+              totalSize += al.stream().map(AccessListEntry::storageKeys).mapToInt(List::size).sum()
+                  * ACCESS_LIST_STORAGE_KEY_SIZE;
               return totalSize;
             })
         .orElse(0);
@@ -435,8 +452,10 @@ public abstract class PendingTransaction
   }
 
   /**
-   * The memory size of an object is calculated using the PendingTransactionEstimatedMemorySizeTest
-   * look there for the details of the calculation and to adapt the code when any of the related
+   * The memory size of an object is calculated using the
+   * PendingTransactionEstimatedMemorySizeTest
+   * look there for the details of the calculation and to adapt the code when any
+   * of the related
    * class changes its structure.
    */
   public interface MemorySize {
