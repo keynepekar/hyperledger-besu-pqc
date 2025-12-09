@@ -94,14 +94,12 @@ public class BlockDataGenerator {
   private KeyPairGenerator createKeyPairGenerator(final long seed) {
     final KeyPairGenerator localKeyPairGenerator;
     try {
-      localKeyPairGenerator =
-          KeyPairGenerator.getInstance(
-              SignatureAlgorithm.ALGORITHM, signatureAlgorithm.getProvider());
+      localKeyPairGenerator = KeyPairGenerator.getInstance(
+          SignatureAlgorithm.ALGORITHM, signatureAlgorithm.getProvider());
     } catch (final Exception e) {
       throw new RuntimeException(e);
     }
-    final ECGenParameterSpec ecGenParameterSpec =
-        new ECGenParameterSpec(signatureAlgorithm.getCurveName());
+    final ECGenParameterSpec ecGenParameterSpec = new ECGenParameterSpec(signatureAlgorithm.getCurveName());
     try {
       final SecureRandom secureRandom = SecureRandomProvider.createSecureRandom();
       secureRandom.setSeed(seed);
@@ -113,7 +111,8 @@ public class BlockDataGenerator {
   }
 
   /**
-   * Generates a sequence of blocks with some accounts and account storage pre-populated with random
+   * Generates a sequence of blocks with some accounts and account storage
+   * pre-populated with random
    * data.
    */
   private List<Block> blockSequence(
@@ -147,12 +146,11 @@ public class BlockDataGenerator {
             });
         stateUpdater.commit();
       }
-      final BlockOptions options =
-          blockOptionsSupplier
-              .get()
-              .setBlockNumber(nextBlockNumber)
-              .setParentHash(parentHash)
-              .setStateRoot(worldState.rootHash());
+      final BlockOptions options = blockOptionsSupplier
+          .get()
+          .setBlockNumber(nextBlockNumber)
+          .setParentHash(parentHash)
+          .setStateRoot(worldState.rootHash());
       final Block next = block(options);
       seq.add(next);
       parentHash = next.getHash();
@@ -245,8 +243,7 @@ public class BlockDataGenerator {
 
   public Block block(final BlockOptions options) {
     final long blockNumber = options.getBlockNumber(positiveLong());
-    final BlockBody body =
-        blockNumber == BlockHeader.GENESIS_BLOCK_NUMBER ? BlockBody.empty() : body(options);
+    final BlockBody body = blockNumber == BlockHeader.GENESIS_BLOCK_NUMBER ? BlockBody.empty() : body(options);
     final BlockHeader header = header(blockNumber, body, options);
     return new Block(header, body);
   }
@@ -283,31 +280,30 @@ public class BlockDataGenerator {
     final int gasLimit = random.nextInt() & Integer.MAX_VALUE;
     final int gasUsed = Math.max(0, gasLimit - 1);
     final long blockNonce = random.nextLong();
-    final BlockHeaderBuilder blockHeaderBuilder =
-        BlockHeaderBuilder.create()
-            .parentHash(options.getParentHash(hash()))
-            .ommersHash(BodyValidation.ommersHash(body.getOmmers()))
-            .coinbase(options.getCoinbase(address()))
-            .stateRoot(options.getStateRoot(hash()))
-            .transactionsRoot(BodyValidation.transactionsRoot(body.getTransactions()))
-            .receiptsRoot(options.getReceiptsRoot(hash()))
-            .logsBloom(options.getLogsBloom(logsBloom()))
-            .difficulty(options.getDifficulty(Difficulty.of(uint256(4))))
-            .number(number)
-            .gasLimit(gasLimit)
-            .gasUsed(options.getGasUsed(gasUsed))
-            .timestamp(
-                options
-                    .getTimestamp()
-                    .orElse(Instant.now().truncatedTo(ChronoUnit.SECONDS).getEpochSecond()))
-            .extraData(options.getExtraData(bytes32()))
-            .mixHash(hash())
-            .nonce(blockNonce)
-            .withdrawalsRoot(options.getWithdrawalsRoot(null))
-            .requestsHash(options.getRequestsHash(null))
-            .balHash(options.getBalHash(null))
-            .blockHeaderFunctions(
-                options.getBlockHeaderFunctions(new MainnetBlockHeaderFunctions()));
+    final BlockHeaderBuilder blockHeaderBuilder = BlockHeaderBuilder.create()
+        .parentHash(options.getParentHash(hash()))
+        .ommersHash(BodyValidation.ommersHash(body.getOmmers()))
+        .coinbase(options.getCoinbase(address()))
+        .stateRoot(options.getStateRoot(hash()))
+        .transactionsRoot(BodyValidation.transactionsRoot(body.getTransactions()))
+        .receiptsRoot(options.getReceiptsRoot(hash()))
+        .logsBloom(options.getLogsBloom(logsBloom()))
+        .difficulty(options.getDifficulty(Difficulty.of(uint256(4))))
+        .number(number)
+        .gasLimit(gasLimit)
+        .gasUsed(options.getGasUsed(gasUsed))
+        .timestamp(
+            options
+                .getTimestamp()
+                .orElse(Instant.now().truncatedTo(ChronoUnit.SECONDS).getEpochSecond()))
+        .extraData(options.getExtraData(bytes32()))
+        .mixHash(hash())
+        .nonce(blockNonce)
+        .withdrawalsRoot(options.getWithdrawalsRoot(null))
+        .requestsHash(options.getRequestsHash(null))
+        .balHash(options.getBalHash(null))
+        .blockHeaderFunctions(
+            options.getBlockHeaderFunctions(new MainnetBlockHeaderFunctions()));
     options.getBaseFee(Optional.of(Wei.of(uint256(2)))).ifPresent(blockHeaderBuilder::baseFee);
     return blockHeaderBuilder.buildBlockHeader();
   }
@@ -376,7 +372,8 @@ public class BlockDataGenerator {
       case ACCESS_LIST -> accessListTransaction(payload, to);
       case BLOB -> blobTransaction(payload, to);
       case DELEGATE_CODE -> null;
-        // no default, all types accounted for.
+      case HYBRID -> hybridTransaction(payload, to);
+      // no default, all types accounted for.
     };
   }
 
@@ -395,8 +392,7 @@ public class BlockDataGenerator {
   }
 
   private List<AccessListEntry> accessList() {
-    final List<Address> accessedAddresses =
-        Stream.generate(this::address).limit(1L + random.nextInt(3)).toList();
+    final List<Address> accessedAddresses = Stream.generate(this::address).limit(1L + random.nextInt(3)).toList();
     final List<AccessListEntry> accessedStorage = new ArrayList<>();
     for (int i = 0; i < accessedAddresses.size(); ++i) {
       accessedStorage.add(
@@ -449,6 +445,26 @@ public class BlockDataGenerator {
         .signAndBuild(generateKeyPair());
   }
 
+  // fake hybrid ml-dsa-44 transaction
+  // hard-coded for testing purposes
+  // TODO: modify this later!!
+  private Transaction hybridTransaction(final Bytes payload, final Address to) {
+    return Transaction.builder()
+        .type(TransactionType.HYBRID)
+        .nonce(random.nextLong())
+        .maxPriorityFeePerGas(Wei.wrap(bytesValue(4)))
+        .maxFeePerGas(Wei.wrap(bytesValue(4)))
+        .gasLimit(positiveLong())
+        .to(to)
+        .value(Wei.of(positiveLong()))
+        .payload(payload)
+        .chainId(BigInteger.ONE)
+        .pqcAlgorithmId((byte) 1)
+        .pqcPublicKey(bytesValue(1312))
+        .pqcSignature(bytesValue(2420))
+        .signAndBuild(generateKeyPair());
+  }
+
   public Set<Transaction> transactions(final int n, final TransactionType... transactionTypes) {
     return Stream.generate(() -> transaction(transactionTypes))
         .parallel()
@@ -467,9 +483,8 @@ public class BlockDataGenerator {
 
   public Set<Transaction> transactionsWithAllTypes(final int atLeast) {
     checkArgument(atLeast >= 0);
-    final HashSet<TransactionType> remainingTransactionTypes =
-        new HashSet<>(
-            Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559));
+    final HashSet<TransactionType> remainingTransactionTypes = new HashSet<>(
+        Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559));
     final HashSet<Transaction> transactions = new HashSet<>();
     while (transactions.size() < atLeast || !remainingTransactionTypes.isEmpty()) {
       final Transaction newTransaction = transaction();
@@ -598,9 +613,10 @@ public class BlockDataGenerator {
   /**
    * Creates a byte sequence with leading zeros.
    *
-   * @param size The size of the byte array to return
-   * @param zerofill The number of lower-order bytes to fill with zero (creating a smaller big
-   *     endian integer value)
+   * @param size     The size of the byte array to return
+   * @param zerofill The number of lower-order bytes to fill with zero (creating a
+   *                 smaller big
+   *                 endian integer value)
    * @return the array of bytes.
    */
   private byte[] bytes(final int size, final int zerofill) {
@@ -618,11 +634,12 @@ public class BlockDataGenerator {
     final BigInteger privateKeyValue = privateKey.getD();
 
     // Ethereum does not use encoded public keys like bitcoin - see
-    // https://en.bitcoin.it/wiki/Elliptic_Curve_Digital_Signature_Algorithm for details
-    // Additionally, as the first bit is a constant prefix (0x04) we ignore this value
+    // https://en.bitcoin.it/wiki/Elliptic_Curve_Digital_Signature_Algorithm for
+    // details
+    // Additionally, as the first bit is a constant prefix (0x04) we ignore this
+    // value
     final byte[] publicKeyBytes = publicKey.getQ().getEncoded(false);
-    final BigInteger publicKeyValue =
-        new BigInteger(1, Arrays.copyOfRange(publicKeyBytes, 1, publicKeyBytes.length));
+    final BigInteger publicKeyValue = new BigInteger(1, Arrays.copyOfRange(publicKeyBytes, 1, publicKeyBytes.length));
 
     return new KeyPair(
         signatureAlgorithm.createPrivateKey(privateKeyValue),
@@ -648,7 +665,7 @@ public class BlockDataGenerator {
     private boolean hasOmmers = true;
     private boolean hasTransactions = true;
     private TransactionType[] transactionTypes = {
-      TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559
+        TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.EIP1559
     };
     private Optional<Address> coinbase = Optional.empty();
     private Optional<Optional<Wei>> maybeBaseFee = Optional.empty();
