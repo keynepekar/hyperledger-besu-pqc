@@ -41,7 +41,7 @@ public class HybridTransactionEncoder {
         out.writeBytes(transaction.getPqcPublicKey().orElseThrow());
 
         // ECDSA Signature
-        writeSignatureAndV(transaction, out);
+        TransactionEncoder.writeSignatureAndRecoveryId(transaction, out);
 
         // PQC Signature
         out.writeBytes(transaction.getPqcSignature().orElseThrow());

@@ -32,8 +32,8 @@ import com.google.common.base.Suppliers;
 import org.apache.tuweni.bytes.Bytes;
 
 class AccessListTransactionDecoder {
-  private static final Supplier<SignatureAlgorithm> SIGNATURE_ALGORITHM =
-      Suppliers.memoize(SignatureAlgorithmFactory::getInstance);
+  private static final Supplier<SignatureAlgorithm> SIGNATURE_ALGORITHM = Suppliers
+      .memoize(SignatureAlgorithmFactory::getInstance);
 
   private AccessListTransactionDecoder() {
     // private constructor
@@ -42,45 +42,45 @@ class AccessListTransactionDecoder {
   public static Transaction decode(final Bytes input) {
     final RLPInput txRlp = RLP.input(input.slice(1)); // Skip the transaction type byte
     txRlp.enterList();
-    final Transaction.Builder preSignatureTransactionBuilder =
-        Transaction.builder()
-            .type(TransactionType.ACCESS_LIST)
-            .chainId(BigInteger.valueOf(txRlp.readLongScalar()))
-            .nonce(txRlp.readLongScalar())
-            .gasPrice(Wei.of(txRlp.readUInt256Scalar()))
-            .gasLimit(txRlp.readLongScalar())
-            .to(
-                txRlp.readBytes(
-                    addressBytes -> addressBytes.isEmpty() ? null : Address.wrap(addressBytes)))
-            .value(Wei.of(txRlp.readUInt256Scalar()))
-            .payload(txRlp.readBytes())
-            .rawRlp(txRlp.raw())
-            .accessList(
-                txRlp.readList(
-                    accessListEntryRLPInput -> {
-                      accessListEntryRLPInput.enterList();
-                      final AccessListEntry accessListEntry =
-                          new AccessListEntry(
-                              Address.wrap(accessListEntryRLPInput.readBytes()),
-                              accessListEntryRLPInput.readList(RLPInput::readBytes32));
-                      accessListEntryRLPInput.leaveList();
-                      return accessListEntry;
-                    }))
-            .sizeForAnnouncement(input.size())
-            .sizeForBlockInclusion(input.size())
-            .hash(Hash.hash(input));
+    final Transaction.Builder preSignatureTransactionBuilder = Transaction.builder()
+        .type(TransactionType.ACCESS_LIST)
+        .chainId(BigInteger.valueOf(txRlp.readLongScalar()))
+        .nonce(txRlp.readLongScalar())
+        .gasPrice(Wei.of(txRlp.readUInt256Scalar()))
+        .gasLimit(txRlp.readLongScalar())
+        .to(
+            txRlp.readBytes(
+                addressBytes -> addressBytes.isEmpty() ? null : Address.wrap(addressBytes)))
+        .value(Wei.of(txRlp.readUInt256Scalar()))
+        .payload(txRlp.readBytes())
+        .rawRlp(txRlp.raw())
+        .accessList(readAccessList(txRlp))
+        .sizeForAnnouncement(input.size())
+        .sizeForBlockInclusion(input.size())
+        .hash(Hash.hash(input));
     final byte recId = (byte) txRlp.readUnsignedByteScalar();
-    final Transaction transaction =
-        preSignatureTransactionBuilder
-            .signature(
-                SIGNATURE_ALGORITHM
-                    .get()
-                    .createSignature(
-                        txRlp.readUInt256Scalar().toUnsignedBigInteger(),
-                        txRlp.readUInt256Scalar().toUnsignedBigInteger(),
-                        recId))
-            .build();
+    final Transaction transaction = preSignatureTransactionBuilder
+        .signature(
+            SIGNATURE_ALGORITHM
+                .get()
+                .createSignature(
+                    txRlp.readUInt256Scalar().toUnsignedBigInteger(),
+                    txRlp.readUInt256Scalar().toUnsignedBigInteger(),
+                    recId))
+        .build();
     txRlp.leaveList();
     return transaction;
+  }
+
+  public static java.util.List<AccessListEntry> readAccessList(final RLPInput rlpInput) {
+    return rlpInput.readList(
+        accessListEntryRLPInput -> {
+          accessListEntryRLPInput.enterList();
+          final AccessListEntry accessListEntry = new AccessListEntry(
+              Address.wrap(accessListEntryRLPInput.readBytes()),
+              accessListEntryRLPInput.readList(RLPInput::readBytes32));
+          accessListEntryRLPInput.leaveList();
+          return accessListEntry;
+        });
   }
 }

@@ -32,47 +32,69 @@ public class HybridTransactionDecoder {
 
     public static Transaction decode(final Bytes input) {
         // Decoding Logic
-        final RLPInput rlpInput = new org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput(input, false);
-        rlpInput.enterList();
-        final BigInteger chainId = rlpInput.readBigIntegerScalar();
-        final long nonce = rlpInput.readLongScalar();
-        final Wei maxPriorityFeePerGas = Wei.of(rlpInput.readUInt256Scalar());
-        final Wei maxFeePerGas = Wei.of(rlpInput.readUInt256Scalar());
-        final long gasLimit = rlpInput.readLongScalar();
-        final Bytes toBytes = rlpInput.readBytes();
-        final Wei value = Wei.of(rlpInput.readUInt256Scalar());
-        final Bytes payload = rlpInput.readBytes();
-        final var accessList = readAccessList(rlpInput);
+        final RLPInput rlpInput = new org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput(input.slice(1), false);
+        try {
+            // System.out.println("DEBUG: Decoding Hybrid TX");
+            rlpInput.enterList();
+            final BigInteger chainId = rlpInput.readBigIntegerScalar();
+            // System.out.println("DEBUG: Read chainId: " + chainId);
+            final long nonce = rlpInput.readLongScalar();
+            final Wei maxPriorityFeePerGas = Wei.of(rlpInput.readUInt256Scalar());
+            final Wei maxFeePerGas = Wei.of(rlpInput.readUInt256Scalar());
+            final long gasLimit = rlpInput.readLongScalar();
 
-        final byte pqcAlgorithmId = rlpInput.readByte();
-        final Bytes pqcPublicKey = rlpInput.readBytes();
+            final Bytes toBytes = rlpInput.readBytes();
+            // System.out.println("DEBUG: Read to: " + toBytes);
 
-        // Read ECDSA Signature
-        final BigInteger v = rlpInput.readBigIntegerScalar();
-        final BigInteger r = rlpInput.readBigIntegerScalar();
-        final BigInteger s = rlpInput.readBigIntegerScalar();
-        final SECPSignature signature = SignatureAlgorithmFactory.getInstance().createSignature(r, s,
-                v.byteValueExact());
+            final Wei value = Wei.of(rlpInput.readUInt256Scalar());
+            final Bytes payload = rlpInput.readBytes();
+            // System.out.println("DEBUG: Read payload len: " + payload.size());
 
-        final Bytes pqcSignature = rlpInput.readBytes();
+            final var accessList = readAccessList(rlpInput);
+            // System.out.println("DEBUG: Read access list");
 
-        rlpInput.leaveList();
+            final byte pqcAlgorithmId = rlpInput.readByte();
+            // System.out.println("DEBUG: Read pqcAlgId: " + pqcAlgorithmId);
 
-        return Transaction.builder()
-                .type(TransactionType.HYBRID)
-                .chainId(chainId)
-                .nonce(nonce)
-                .maxPriorityFeePerGas(maxPriorityFeePerGas)
-                .maxFeePerGas(maxFeePerGas)
-                .gasLimit(gasLimit)
-                .to(toBytes.isEmpty() ? null : Address.wrap(toBytes))
-                .value(value)
-                .payload(payload)
-                .accessList(accessList)
-                .pqcAlgorithmId(pqcAlgorithmId)
-                .pqcPublicKey(pqcPublicKey)
-                .signature(signature)
-                .pqcSignature(pqcSignature)
-                .build();
+            final Bytes pqcPublicKey = rlpInput.readBytes();
+            // System.out.println("DEBUG: Read pqcPK len: " + pqcPublicKey.size());
+
+            // Read ECDSA Signature
+            final BigInteger v = rlpInput.readBigIntegerScalar();
+            final BigInteger r = rlpInput.readBigIntegerScalar();
+            final BigInteger s = rlpInput.readBigIntegerScalar();
+            // System.out.println("DEBUG: Read ECDSA v, r, s : " + v);
+
+            final SECPSignature signature = SignatureAlgorithmFactory.getInstance().createSignature(r, s,
+                    v.byteValueExact());
+
+            final Bytes pqcSignature = rlpInput.readBytes();
+            // System.out.println("DEBUG: Read pqcSignature len: " + pqcSignature.size());
+
+            rlpInput.leaveList();
+            // System.out.println("DEBUG: Decoding suceeded");
+
+            return Transaction.builder()
+                    .type(TransactionType.HYBRID)
+                    .chainId(chainId)
+                    .nonce(nonce)
+                    .maxPriorityFeePerGas(maxPriorityFeePerGas)
+                    .maxFeePerGas(maxFeePerGas)
+                    .gasLimit(gasLimit)
+                    .to(toBytes.isEmpty() ? null : Address.wrap(toBytes))
+                    .value(value)
+                    .payload(payload)
+                    .accessList(accessList)
+                    .pqcAlgorithmId(pqcAlgorithmId)
+                    .pqcPublicKey(pqcPublicKey)
+                    .signature(signature)
+                    .pqcSignature(pqcSignature)
+                    .rawRlp(input)
+                    .build();
+        } catch (Exception e) {
+            System.out.println("DEBUG: Decoding failed");
+            e.printStackTrace();
+            throw e;
+        }
     }
 }
