@@ -810,10 +810,12 @@ public class Transaction
     return pqcAlgorithmId;
   }
 
+  @Override
   public Optional<Bytes> getPqcPublicKey() {
     return pqcPublicKey;
   }
 
+  @Override
   public Optional<Bytes> getPqcSignature() {
     return pqcSignature;
   }
@@ -864,6 +866,8 @@ public class Transaction
         accessList,
         versionedHashes,
         codeDelegationList,
+        pqcAlgorithmId,
+        pqcPublicKey,
         chainId);
     return keccak256(preimage);
   }
@@ -884,6 +888,8 @@ public class Transaction
         maybeAccessList,
         versionedHashes.orElse(null),
         maybeCodeDelegationList,
+        pqcAlgorithmId,
+        pqcPublicKey,
         chainId);
   }
 
@@ -901,6 +907,8 @@ public class Transaction
       final Optional<List<AccessListEntry>> accessList,
       final List<VersionedHash> versionedHashes,
       final Optional<List<CodeDelegation>> codeDelegationList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey,
       final Optional<BigInteger> chainId) {
     final Bytes preimage = switch (transactionType) {
       case FRONTIER -> frontierPreimage(nonce, gasPrice, gasLimit, to, value, payload, chainId);

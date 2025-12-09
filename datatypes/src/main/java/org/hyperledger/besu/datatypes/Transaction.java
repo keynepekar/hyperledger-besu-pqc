@@ -21,13 +21,19 @@ import java.util.Optional;
 import org.apache.tuweni.bytes.Bytes;
 
 /**
- * A transaction is a single cryptographically-signed instruction constructed by an actor externally
- * to the scope of Ethereum. While it is assumed that the ultimate external actor will be human in
+ * A transaction is a single cryptographically-signed instruction constructed by
+ * an actor externally
+ * to the scope of Ethereum. While it is assumed that the ultimate external
+ * actor will be human in
  * nature, software tools will be used in its construction and dissemination.
  *
- * <p>There are two types of transactions: those which result in message calls and those which
- * result in the creation of new accounts with associated code (known informally as ‘contract
- * creation’). Message call transactions will have an address present in the {@link #getTo} method
+ * <p>
+ * There are two types of transactions: those which result in message calls and
+ * those which
+ * result in the creation of new accounts with associated code (known informally
+ * as ‘contract
+ * creation’). Message call transactions will have an address present in the
+ * {@link #getTo} method
  * whereas contract creation transactions will not.
  */
 public interface Transaction {
@@ -47,7 +53,8 @@ public interface Transaction {
   long getNonce();
 
   /**
-   * A scalar value equal to the number of Wei to be paid per unit of gas for all computation costs
+   * A scalar value equal to the number of Wei to be paid per unit of gas for all
+   * computation costs
    * incurred as a result of the execution of this transaction.
    *
    * @return the quantity of Wei per gas unit paid.
@@ -55,7 +62,8 @@ public interface Transaction {
   Optional<? extends Quantity> getGasPrice();
 
   /**
-   * A scalar value equal to the number of Wei to be paid on top of base fee, as specified in
+   * A scalar value equal to the number of Wei to be paid on top of base fee, as
+   * specified in
    * EIP-1559.
    *
    * @return the quantity of Wei for max fee per gas
@@ -65,7 +73,8 @@ public interface Transaction {
   }
 
   /**
-   * A scalar value equal to the number of Wei to be paid in total, as specified in EIP-1559.
+   * A scalar value equal to the number of Wei to be paid in total, as specified
+   * in EIP-1559.
    *
    * @return the quantity of Wei for fee cap.
    */
@@ -74,7 +83,8 @@ public interface Transaction {
   }
 
   /**
-   * A scalar value equal to the max number of Wei to be paid for blob gas, as specified in
+   * A scalar value equal to the max number of Wei to be paid for blob gas, as
+   * specified in
    * EIP-4844.
    *
    * @return the quantity of Wei for fee per blob gas.
@@ -84,16 +94,20 @@ public interface Transaction {
   }
 
   /**
-   * A scalar value equal to the maximum amount of gas that should be used in executing this
-   * transaction. This is paid up-front, before any computation is done and may not be increased
+   * A scalar value equal to the maximum amount of gas that should be used in
+   * executing this
+   * transaction. This is paid up-front, before any computation is done and may
+   * not be increased
    * later.
    *
-   * @return the maximum amount of gas that should be used in executing this * transaction.
+   * @return the maximum amount of gas that should be used in executing this *
+   *         transaction.
    */
   long getGasLimit();
 
   /**
-   * The 160-bit address of the message call’s recipient. For a contract creation transaction this
+   * The 160-bit address of the message call’s recipient. For a contract creation
+   * transaction this
    * address will not be present.
    *
    * @return address of the recipient
@@ -101,8 +115,10 @@ public interface Transaction {
   Optional<? extends Address> getTo();
 
   /**
-   * A scalar value equal to the number of Wei to be transferred to the message call’s recipient or,
-   * in the case of contract creation, as an endowment to the newly created account.
+   * A scalar value equal to the number of Wei to be transferred to the message
+   * call’s recipient or,
+   * in the case of contract creation, as an endowment to the newly created
+   * account.
    *
    * @return value equal to the number of Wei to be transferred
    */
@@ -116,7 +132,8 @@ public interface Transaction {
   BigInteger getYParity();
 
   /**
-   * Value corresponding to the 'v' component of legacy signatures, which encodes chainId and
+   * Value corresponding to the 'v' component of legacy signatures, which encodes
+   * chainId and
    * yParity.
    *
    * @return the 'V' component of the signature
@@ -138,7 +155,8 @@ public interface Transaction {
   BigInteger getS();
 
   /**
-   * The 160-bit address of the account sending the transaction, extracted from the v, r, s
+   * The 160-bit address of the account sending the transaction, extracted from
+   * the v, r, s
    * parameters.
    *
    * @return The address of the account that sent this transaction.
@@ -146,7 +164,8 @@ public interface Transaction {
   Address getSender();
 
   /**
-   * The chainId, computed from the 'V' portion of the signature. Used for replay protection. If
+   * The chainId, computed from the 'V' portion of the signature. Used for replay
+   * protection. If
    * replay protection is not enabled, this value will not be present.
    *
    * @return The chainId for transaction.
@@ -154,10 +173,13 @@ public interface Transaction {
   Optional<BigInteger> getChainId();
 
   /**
-   * An unlimited size byte array specifying the EVM-code for the account // initialisation
+   * An unlimited size byte array specifying the EVM-code for the account //
+   * initialisation
    * procedure.
    *
-   * <p>Only present if this is a contract creation transaction, which is only true if {@link
+   * <p>
+   * Only present if this is a contract creation transaction, which is only true
+   * if {@link
    * #getTo} is empty.
    *
    * @return if present, the contract init code.
@@ -167,7 +189,9 @@ public interface Transaction {
   /**
    * An unlimited size byte array specifying the input data of the message call.
    *
-   * <p>Only present if this is a message call transaction, which is only true if {@link #getTo} is
+   * <p>
+   * Only present if this is a message call transaction, which is only true if
+   * {@link #getTo} is
    * present.
    *
    * @return if present, the message call data
@@ -177,9 +201,13 @@ public interface Transaction {
   /**
    * The data payload of this transaction.
    *
-   * <p>If this transaction is a message-call to an account (the {@link #getTo} field is present),
-   * this same value will be exposed by {@link #getData}. If instead this is a contract-creation
-   * transaction (the {@link #getTo} field is absent), the payload is also exposed by {@link
+   * <p>
+   * If this transaction is a message-call to an account (the {@link #getTo} field
+   * is present),
+   * this same value will be exposed by {@link #getData}. If instead this is a
+   * contract-creation
+   * transaction (the {@link #getTo} field is absent), the payload is also exposed
+   * by {@link
    * #getInit}.
    *
    * @return the transaction payload
@@ -243,20 +271,27 @@ public interface Transaction {
   Bytes encodedPreimage();
 
   /**
-   * Returns the size in bytes of the encoded transaction. This is the size of the transaction when
+   * Returns the size in bytes of the encoded transaction. This is the size of the
+   * transaction when
    * it is announced to other peers. The difference between this and {@link
-   * #getSizeForBlockInclusion()} is that transactions that are included in a block cannot contain
-   * blobs, whereas transactions that are announced and sent to other peers have to contain blobs.
+   * #getSizeForBlockInclusion()} is that transactions that are included in a
+   * block cannot contain
+   * blobs, whereas transactions that are announced and sent to other peers have
+   * to contain blobs.
    *
    * @return the size in bytes of the encoded transaction.
    */
   int getSizeForAnnouncement();
 
   /**
-   * Returns the size in bytes of the encoded transaction for block inclusion. This is the size of
-   * the transaction when it is included in a block. The difference between this and {@link
-   * #getSizeForAnnouncement()} is that transactions that are included in a block cannot contain
-   * blobs, whereas transactions that are announced and sent to other peers have to contain blobs.
+   * Returns the size in bytes of the encoded transaction for block inclusion.
+   * This is the size of
+   * the transaction when it is included in a block. The difference between this
+   * and {@link
+   * #getSizeForAnnouncement()} is that transactions that are included in a block
+   * cannot contain
+   * blobs, whereas transactions that are announced and sent to other peers have
+   * to contain blobs.
    *
    * @return the size in bytes of the encoded transaction for block inclusion.
    */
@@ -265,7 +300,8 @@ public interface Transaction {
   /**
    * Returns whether the transaction is a contract creation
    *
-   * @return {@code true} if this is a contract-creation transaction; otherwise {@code false}
+   * @return {@code true} if this is a contract-creation transaction; otherwise
+   *         {@code false}
    */
   boolean isContractCreation();
 
@@ -282,4 +318,22 @@ public interface Transaction {
    * @return the size of the code delegation list
    */
   int codeDelegationListSize();
+
+  /**
+   * Returns the PQ Public Key for Hybrid transactions.
+   *
+   * @return optional PQ Public Key
+   */
+  default Optional<Bytes> getPqcPublicKey() {
+    return Optional.empty();
+  }
+
+  /**
+   * Returns the PQ Signature for Hybrid transactions.
+   *
+   * @return optional PQ Signature
+   */
+  default Optional<Bytes> getPqcSignature() {
+    return Optional.empty();
+  }
 }
