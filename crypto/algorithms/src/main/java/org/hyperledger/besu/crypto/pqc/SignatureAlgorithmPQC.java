@@ -20,8 +20,19 @@ public interface SignatureAlgorithmPQC {
   /** Public key length (in bytes) */
   int publicKeyLength();
 
-  /** Signature length (in bytes) */
+  /** Signature length (in bytes) or max length if variable (Falcon case) */
   int signatureLength();
+
+  /**
+   * Check if signature length is valid.
+   * Default implementation checks exact length.
+   *
+   * @param length the length
+   * @return true if valid
+   */
+  default boolean isSignatureLengthValid(final int length) {
+    return length == signatureLength();
+  }
 
   /**
    * Create PQ public key.

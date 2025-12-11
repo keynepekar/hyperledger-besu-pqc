@@ -121,7 +121,7 @@ public class MainnetTransactionValidator implements TransactionValidator {
         return ValidationResult.invalid(
             TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC public key length");
       }
-      if (sigBytes.size() != pqc.signatureLength()) {
+      if (!pqc.isSignatureLengthValid(sigBytes.size())) {
         return ValidationResult.invalid(
             TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC signature length");
       }
