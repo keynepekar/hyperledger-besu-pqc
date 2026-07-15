@@ -106,7 +106,7 @@ public class LondonGasCalculator extends BerlinGasCalculator {
     // PQC Gas Cost for Hybrid Transactions (Type 5)
     // 16gas/B (cost introduced by Istanbul update for non-zero data)
     if (transaction.getType().equals(org.hyperledger.besu.datatypes.TransactionType.HYBRID)) {
-      long pqcCost = 0L;
+      long pqcCost = transaction.getPqcAlgorithmId().isPresent() ? 16L : 0L;
       if (transaction.getPqcPublicKey().isPresent()) {
         pqcCost += transaction.getPqcPublicKey().get().size() * 16L;
       }

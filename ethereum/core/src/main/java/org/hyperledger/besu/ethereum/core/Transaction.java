@@ -806,6 +806,7 @@ public class Transaction
     return maybeCodeDelegationList.map(List::size).orElse(0);
   }
 
+  @Override
   public Optional<Byte> getPqcAlgorithmId() {
     return pqcAlgorithmId;
   }
@@ -1347,8 +1348,8 @@ public class Transaction
         detachedBlobsWithCommitments,
         detachedCodeDelegationList,
         pqcAlgorithmId,
-        pqcPublicKey,
-        pqcSignature,
+        pqcPublicKey.map(Bytes::copy),
+        pqcSignature.map(Bytes::copy),
         Optional.empty(),
         Optional.ofNullable(hash),
         Optional.of(sizeForAnnouncement),
@@ -1567,12 +1568,12 @@ public class Transaction
         transactionType = TransactionType.DELEGATE_CODE;
       } else if (versionedHashes != null && !versionedHashes.isEmpty()) {
         transactionType = TransactionType.BLOB;
+      } else if (pqcPublicKey.isPresent()) {
+        transactionType = TransactionType.HYBRID;
       } else if (maxPriorityFeePerGas != null || maxFeePerGas != null) {
         transactionType = TransactionType.EIP1559;
       } else if (accessList.isPresent()) {
         transactionType = TransactionType.ACCESS_LIST;
-      } else if (pqcPublicKey.isPresent()) {
-        transactionType = TransactionType.HYBRID;
       } else {
         transactionType = TransactionType.FRONTIER;
       }

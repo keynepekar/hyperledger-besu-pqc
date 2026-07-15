@@ -320,6 +320,15 @@ public interface Transaction {
   int codeDelegationListSize();
 
   /**
+   * Returns the PQC algorithm identifier for Hybrid transactions.
+   *
+   * @return optional PQC algorithm identifier
+   */
+  default Optional<Byte> getPqcAlgorithmId() {
+    return Optional.empty();
+  }
+
+  /**
    * Returns the PQ Public Key for Hybrid transactions.
    *
    * @return optional PQ Public Key
