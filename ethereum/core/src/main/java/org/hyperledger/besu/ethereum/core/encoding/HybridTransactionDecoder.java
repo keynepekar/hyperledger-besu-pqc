@@ -19,9 +19,11 @@ import static org.hyperledger.besu.ethereum.core.encoding.AccessListTransactionD
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
 import org.hyperledger.besu.datatypes.Address;
+import org.hyperledger.besu.datatypes.Hash;
 import org.hyperledger.besu.datatypes.TransactionType;
 import org.hyperledger.besu.datatypes.Wei;
 import org.hyperledger.besu.ethereum.core.Transaction;
+import org.hyperledger.besu.ethereum.rlp.RLP;
 import org.hyperledger.besu.ethereum.rlp.RLPInput;
 
 import java.math.BigInteger;
@@ -32,7 +34,7 @@ public class HybridTransactionDecoder {
 
     public static Transaction decode(final Bytes input) {
         // Decoding Logic
-        final RLPInput rlpInput = new org.hyperledger.besu.ethereum.rlp.BytesValueRLPInput(input.slice(1), false);
+        final RLPInput rlpInput = RLP.input(input.slice(1));
         try {
             // System.out.println("DEBUG: Decoding Hybrid TX");
             rlpInput.enterList();
@@ -89,7 +91,10 @@ public class HybridTransactionDecoder {
                     .pqcPublicKey(pqcPublicKey)
                     .signature(signature)
                     .pqcSignature(pqcSignature)
-                    .rawRlp(input)
+                    .rawRlp(rlpInput.raw())
+                    .sizeForAnnouncement(input.size())
+                    .sizeForBlockInclusion(input.size())
+                    .hash(Hash.hash(input))
                     .build();
         } catch (Exception e) {
             System.out.println("DEBUG: Decoding failed");

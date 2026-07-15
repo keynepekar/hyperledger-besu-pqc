@@ -136,6 +136,24 @@ class TransactionRLPDecoderTest {
     assertThat(encodedBytes).isEqualTo(reencodedBytes);
   }
 
+  @Test
+  void shouldRoundTripHybridTransactionWithoutDuplicatingTypeByte() {
+    final Transaction hybridTransaction =
+        new BlockDataGenerator().transaction(TransactionType.HYBRID);
+    final Bytes encodedBytes =
+        TransactionEncoder.encodeOpaqueBytes(hybridTransaction, EncodingContext.BLOCK_BODY);
+
+    final Transaction decodedTransaction =
+        TransactionDecoder.decodeOpaqueBytes(encodedBytes, EncodingContext.BLOCK_BODY);
+    final Bytes reencodedBytes =
+        TransactionEncoder.encodeOpaqueBytes(decodedTransaction, EncodingContext.BLOCK_BODY);
+
+    assertThat(decodedTransaction.getType()).isEqualTo(TransactionType.HYBRID);
+    assertThat(decodedTransaction.getHash()).isEqualTo(hybridTransaction.getHash());
+    assertThat(decodedTransaction.getSizeForBlockInclusion()).isEqualTo(encodedBytes.size());
+    assertThat(reencodedBytes).isEqualTo(encodedBytes);
+  }
+
   private static Collection<Object[]> dataTransactionSize() {
     return Arrays.asList(
         new Object[][] {
