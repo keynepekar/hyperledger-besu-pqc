@@ -538,7 +538,7 @@ public abstract class MainnetProtocolSpecs {
                                 gasLimitCalculator,
                                 true,
                                 chainId,
-                                Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST, TransactionType.HYBRID)))
+                                Set.of(TransactionType.FRONTIER, TransactionType.ACCESS_LIST)))
                 .transactionReceiptFactory(new BerlinTransactionReceiptFactory(enableRevertReason))
                 .hardforkId(BERLIN);
     }
@@ -919,7 +919,6 @@ public abstract class MainnetProtocolSpecs {
                                         TransactionType.ACCESS_LIST,
                                         TransactionType.EIP1559,
                                         TransactionType.BLOB,
-                                        TransactionType.BLOB,
                                         TransactionType.DELEGATE_CODE,
                                         TransactionType.HYBRID),
                                 Set.of(BlobType.KZG_PROOF),
@@ -1006,7 +1005,6 @@ public abstract class MainnetProtocolSpecs {
                                         TransactionType.FRONTIER,
                                         TransactionType.ACCESS_LIST,
                                         TransactionType.EIP1559,
-                                        TransactionType.BLOB,
                                         TransactionType.BLOB,
                                         TransactionType.DELEGATE_CODE,
                                         TransactionType.HYBRID),

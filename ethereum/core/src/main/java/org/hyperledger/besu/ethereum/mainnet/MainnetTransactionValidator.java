@@ -112,7 +112,13 @@ public class MainnetTransactionValidator implements TransactionValidator {
       }
 
       final byte algId = transaction.getPqcAlgorithmId().get();
-      final SignatureAlgorithmPQC pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
+      final SignatureAlgorithmPQC pqc;
+      try {
+        pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
+      } catch (final IllegalArgumentException e) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Unsupported PQC algorithm ID");
+      }
 
       final Bytes pubKeyBytes = transaction.getPqcPublicKey().get();
       final Bytes sigBytes = transaction.getPqcSignature().get();
