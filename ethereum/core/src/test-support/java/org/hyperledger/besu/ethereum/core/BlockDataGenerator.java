@@ -529,6 +529,7 @@ public class BlockDataGenerator {
       case ACCESS_LIST -> accessListTransaction(payload, to);
       case BLOB -> blobTransaction(payload, to);
       case DELEGATE_CODE -> null;
+      case HYBRID -> hybridTransaction(payload, to);
     };
   }
 
@@ -598,6 +599,23 @@ public class BlockDataGenerator {
         .value(Wei.wrap(bytes32()))
         .payload(payload)
         .chainId(BigInteger.ONE)
+        .signAndBuild(generateKeyPair());
+  }
+
+  private Transaction hybridTransaction(final Bytes payload, final Address to) {
+    return Transaction.builder()
+        .type(TransactionType.HYBRID)
+        .nonce(random.nextLong())
+        .maxPriorityFeePerGas(Wei.wrap(bytesValue(4)))
+        .maxFeePerGas(Wei.wrap(bytesValue(4)))
+        .gasLimit(positiveLong())
+        .to(to)
+        .value(Wei.of(positiveLong()))
+        .payload(payload)
+        .chainId(BigInteger.ONE)
+        .pqcAlgorithmId((byte) 1)
+        .pqcPublicKey(bytesValue(1312))
+        .pqcSignature(bytesValue(2420))
         .signAndBuild(generateKeyPair());
   }
 

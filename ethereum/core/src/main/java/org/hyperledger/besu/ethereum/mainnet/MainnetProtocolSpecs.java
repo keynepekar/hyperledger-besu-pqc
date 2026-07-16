@@ -606,7 +606,8 @@ public abstract class MainnetProtocolSpecs {
                     Set.of(
                         TransactionType.FRONTIER,
                         TransactionType.ACCESS_LIST,
-                        TransactionType.EIP1559),
+                        TransactionType.EIP1559,
+                        TransactionType.HYBRID),
                     Integer.MAX_VALUE))
         .transactionProcessorBuilder(
             (gasCalculator,
@@ -779,7 +780,8 @@ public abstract class MainnetProtocolSpecs {
                     Set.of(
                         TransactionType.FRONTIER,
                         TransactionType.ACCESS_LIST,
-                        TransactionType.EIP1559),
+                        TransactionType.EIP1559,
+                        TransactionType.HYBRID),
                     evm.getMaxInitcodeSize()))
         .withdrawalsProcessor(new WithdrawalsProcessor())
         .withdrawalsValidator(new WithdrawalsValidator.AllowedWithdrawals())
@@ -871,7 +873,8 @@ public abstract class MainnetProtocolSpecs {
                         TransactionType.FRONTIER,
                         TransactionType.ACCESS_LIST,
                         TransactionType.EIP1559,
-                        TransactionType.BLOB),
+                        TransactionType.BLOB,
+                        TransactionType.HYBRID),
                     Set.of(BlobType.KZG_PROOF),
                     evm.getMaxInitcodeSize()))
         .precompileContractRegistryBuilder(MainnetPrecompiledContractRegistries::cancun)
@@ -933,7 +936,8 @@ public abstract class MainnetProtocolSpecs {
                             TransactionType.ACCESS_LIST,
                             TransactionType.EIP1559,
                             TransactionType.BLOB,
-                            TransactionType.DELEGATE_CODE),
+                            TransactionType.DELEGATE_CODE,
+                            TransactionType.HYBRID),
                         Set.of(BlobType.KZG_PROOF),
                         evm.getMaxInitcodeSize()))
             // CodeDelegationProcessor
@@ -1037,7 +1041,8 @@ public abstract class MainnetProtocolSpecs {
                         TransactionType.ACCESS_LIST,
                         TransactionType.EIP1559,
                         TransactionType.BLOB,
-                        TransactionType.DELEGATE_CODE),
+                        TransactionType.DELEGATE_CODE,
+                        TransactionType.HYBRID),
                     Set.of(BlobType.KZG_CELL_PROOFS),
                     evm.getMaxInitcodeSize()))
         .transactionPoolPreProcessor(new OsakaTransactionPoolPreProcessor())

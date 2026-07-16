@@ -160,6 +160,7 @@ public abstract class PendingTransaction
           case EIP1559 -> computeEIP1559MemorySize();
           case BLOB -> computeBlobMemorySize();
           case DELEGATE_CODE -> computeDelegateCodeMemorySize();
+          case HYBRID -> computeHybridMemorySize();
         }
         + PENDING_TRANSACTION_SHALLOW_SIZE;
   }
@@ -195,6 +196,21 @@ public abstract class PendingTransaction
 
   private int computeDelegateCodeMemorySize() {
     return computeEIP1559MemorySize() + computeCodeDelegationListMemorySize();
+  }
+
+  private int computeHybridMemorySize() {
+    // EIP1559 base size
+    int size = computeEIP1559MemorySize();
+
+    // PQC fields size : aldId (1byte) + PK + sig
+    size += 1;
+    if (transaction.getPqcPublicKey().isPresent()) {
+      size += transaction.getPqcPublicKey().get().size();
+    }
+    if (transaction.getPqcSignature().isPresent()) {
+      size += transaction.getPqcSignature().get().size();
+    }
+    return size;
   }
 
   private int computeBlobWithCommitmentsMemorySize() {

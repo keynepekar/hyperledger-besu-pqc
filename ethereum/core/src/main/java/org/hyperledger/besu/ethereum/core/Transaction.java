@@ -75,7 +75,8 @@ public class Transaction
 
   public static final BigInteger REPLAY_PROTECTED_V_BASE = BigInteger.valueOf(35);
 
-  // The v signature parameter starts at 36 because 1 is the first valid chainId so:
+  // The v signature parameter starts at 36 because 1 is the first valid chainId
+  // so:
   // chainId > 1 implies that 2 * chainId + V_BASE > 36.
   public static final BigInteger REPLAY_PROTECTED_V_MIN = BigInteger.valueOf(36);
 
@@ -108,8 +109,10 @@ public class Transaction
   private final Optional<BigInteger> chainId;
 
   // Caches a "hash" of a portion of the transaction used for sender recovery.
-  // Note that this hash does not include the transaction signature, so it does not
-  // fully identify the transaction (use the result of the {@code hash()} for that).
+  // Note that this hash does not include the transaction signature, so it does
+  // not
+  // fully identify the transaction (use the result of the {@code hash()} for
+  // that).
   // It is only used to compute said signature and recover the sender from it.
   private volatile Bytes32 hashNoSignature;
 
@@ -128,6 +131,9 @@ public class Transaction
 
   private final Optional<BlobsWithCommitments> blobsWithCommitments;
   private final Optional<List<CodeDelegation>> maybeCodeDelegationList;
+  private final Optional<Byte> pqcAlgorithmId;
+  private final Optional<Bytes> pqcPublicKey;
+  private final Optional<Bytes> pqcSignature;
 
   private final Optional<Bytes> rawRlp;
 
@@ -207,6 +213,9 @@ public class Transaction
       final Optional<List<VersionedHash>> versionedHashes,
       final Optional<BlobsWithCommitments> blobsWithCommitments,
       final Optional<List<CodeDelegation>> maybeCodeDelegationList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey,
+      final Optional<Bytes> pqcSignature,
       final Optional<Bytes> rawRlp,
       final Optional<Hash> hash,
       final Optional<Integer> sizeForAnnouncement,
@@ -271,6 +280,9 @@ public class Transaction
     this.versionedHashes = versionedHashes;
     this.blobsWithCommitments = blobsWithCommitments;
     this.maybeCodeDelegationList = maybeCodeDelegationList;
+    this.pqcAlgorithmId = pqcAlgorithmId;
+    this.pqcPublicKey = pqcPublicKey;
+    this.pqcSignature = pqcSignature;
     this.rawRlp = rawRlp;
     hash.ifPresent(h -> this.hash = h);
     sizeForAnnouncement.ifPresent(i -> this.sizeForAnnouncement = i);
@@ -496,6 +508,10 @@ public class Transaction
         .map(SECPPublicKey::toString);
   }
 
+  public Bytes32 getSenderRecoveryHash() {
+    return getOrComputeSenderRecoveryHash();
+  }
+
   private Bytes32 getOrComputeSenderRecoveryHash() {
     if (hashNoSignature == null) {
       hashNoSignature =
@@ -513,6 +529,8 @@ public class Transaction
               maybeAccessList,
               versionedHashes.orElse(null),
               maybeCodeDelegationList,
+              pqcAlgorithmId,
+              pqcPublicKey,
               chainId);
     }
     return hashNoSignature;
@@ -622,7 +640,8 @@ public class Transaction
     hash = Hash.hash(bytes);
     sizeForBlockInclusion = bytes.size();
     if (!transactionType.supportsBlob() || this.getBlobsWithCommitments().isEmpty()) {
-      // for transactions not containing blobs the encoding is the same, so we can set this as well:
+      // for transactions not containing blobs the encoding is the same, so we can set
+      // this as well:
       sizeForAnnouncement = sizeForBlockInclusion;
     }
   }
@@ -632,7 +651,8 @@ public class Transaction
         TransactionEncoder.encodeOpaqueBytes(this, EncodingContext.POOLED_TRANSACTION);
     sizeForAnnouncement = pooledBytes.size();
     if (!transactionType.supportsBlob() || this.getBlobsWithCommitments().isEmpty()) {
-      // for transactions not containing blobs the encoding is the same, so we can set these as
+      // for transactions not containing blobs the encoding is the same, so we can set
+      // these as
       // well:
       sizeForBlockInclusion = sizeForAnnouncement;
       if (hash == null) {
@@ -764,6 +784,21 @@ public class Transaction
     return maybeCodeDelegationList.map(List::size).orElse(0);
   }
 
+  @Override
+  public Optional<Byte> getPqcAlgorithmId() {
+    return pqcAlgorithmId;
+  }
+
+  @Override
+  public Optional<Bytes> getPqcPublicKey() {
+    return pqcPublicKey;
+  }
+
+  @Override
+  public Optional<Bytes> getPqcSignature() {
+    return pqcSignature;
+  }
+
   /**
    * Return the list of transaction hashes extracted from the collection of Transaction passed as
    * argument
@@ -789,6 +824,8 @@ public class Transaction
       final Optional<List<AccessListEntry>> accessList,
       final List<VersionedHash> versionedHashes,
       final Optional<List<CodeDelegation>> codeDelegationList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey,
       final Optional<BigInteger> chainId) {
     if (transactionType.requiresChainId()) {
       checkArgument(chainId.isPresent(), "Transaction type %s requires chainId", transactionType);
@@ -808,6 +845,8 @@ public class Transaction
             accessList,
             versionedHashes,
             codeDelegationList,
+            pqcAlgorithmId,
+            pqcPublicKey,
             chainId);
     return keccak256(preimage);
   }
@@ -828,6 +867,8 @@ public class Transaction
         maybeAccessList,
         versionedHashes.orElse(null),
         maybeCodeDelegationList,
+        pqcAlgorithmId,
+        pqcPublicKey,
         chainId);
   }
 
@@ -845,6 +886,8 @@ public class Transaction
       final Optional<List<AccessListEntry>> accessList,
       final List<VersionedHash> versionedHashes,
       final Optional<List<CodeDelegation>> codeDelegationList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey,
       final Optional<BigInteger> chainId) {
     final Bytes preimage =
         switch (transactionType) {
@@ -901,6 +944,19 @@ public class Transaction
                       () ->
                           new IllegalStateException(
                               "Developer error: the transaction should be guaranteed to have a code delegations here")));
+          case HYBRID ->
+              hybridPreimage(
+                  nonce,
+                  maxPriorityFeePerGas,
+                  maxFeePerGas,
+                  gasLimit,
+                  to,
+                  value,
+                  payload,
+                  chainId,
+                  accessList,
+                  pqcAlgorithmId,
+                  pqcPublicKey);
         };
     return preimage;
   }
@@ -1069,6 +1125,40 @@ public class Transaction
               rlpOutput.endList();
             });
     return Bytes.concatenate(Bytes.of(TransactionType.DELEGATE_CODE.getSerializedType()), encoded);
+  }
+
+  private static Bytes hybridPreimage(
+      final long nonce,
+      final Wei maxPriorityFeePerGas,
+      final Wei maxFeePerGas,
+      final long gasLimit,
+      final Optional<Address> to,
+      final Wei value,
+      final Bytes payload,
+      final Optional<BigInteger> chainId,
+      final Optional<List<AccessListEntry>> accessList,
+      final Optional<Byte> pqcAlgorithmId,
+      final Optional<Bytes> pqcPublicKey) {
+    final Bytes encoded =
+        RLP.encode(
+            rlpOutput -> {
+              rlpOutput.startList();
+              eip1559PreimageFields(
+                  nonce,
+                  maxPriorityFeePerGas,
+                  maxFeePerGas,
+                  gasLimit,
+                  to,
+                  value,
+                  payload,
+                  chainId,
+                  accessList,
+                  rlpOutput);
+              rlpOutput.writeByte(pqcAlgorithmId.orElseThrow());
+              rlpOutput.writeBytes(pqcPublicKey.orElseThrow());
+              rlpOutput.endList();
+            });
+    return Bytes.concatenate(Bytes.of(TransactionType.HYBRID.getSerializedType()), encoded);
   }
 
   @Override
@@ -1247,6 +1337,9 @@ public class Transaction
             detachedVersionedHashes,
             detachedBlobsWithCommitments,
             detachedCodeDelegationList,
+            pqcAlgorithmId,
+            pqcPublicKey.map(Bytes::copy),
+            pqcSignature.map(Bytes::copy),
             Optional.empty(),
             Optional.ofNullable(hash),
             Optional.of(sizeForAnnouncement),
@@ -1329,6 +1422,9 @@ public class Transaction
     protected List<VersionedHash> versionedHashes = null;
     private BlobsWithCommitments blobsWithCommitments;
     protected Optional<List<CodeDelegation>> codeDelegationAuthorizations = Optional.empty();
+    protected Optional<Byte> pqcAlgorithmId = Optional.empty();
+    protected Optional<Bytes> pqcPublicKey = Optional.empty();
+    protected Optional<Bytes> pqcSignature = Optional.empty();
     protected Bytes rawRlp = null;
     private Optional<Hash> hash = Optional.empty();
     private Optional<Integer> sizeForAnnouncement = Optional.empty();
@@ -1352,6 +1448,9 @@ public class Transaction
       this.versionedHashes = toCopy.versionedHashes.orElse(null);
       this.blobsWithCommitments = toCopy.blobsWithCommitments.orElse(null);
       this.codeDelegationAuthorizations = toCopy.maybeCodeDelegationList;
+      this.pqcAlgorithmId = toCopy.pqcAlgorithmId;
+      this.pqcPublicKey = toCopy.pqcPublicKey;
+      this.pqcSignature = toCopy.pqcSignature;
       return this;
     }
 
@@ -1463,6 +1562,8 @@ public class Transaction
         transactionType = TransactionType.DELEGATE_CODE;
       } else if (versionedHashes != null && !versionedHashes.isEmpty()) {
         transactionType = TransactionType.BLOB;
+      } else if (pqcPublicKey.isPresent()) {
+        transactionType = TransactionType.HYBRID;
       } else if (maxPriorityFeePerGas != null || maxFeePerGas != null) {
         transactionType = TransactionType.EIP1559;
       } else if (accessList.isPresent()) {
@@ -1498,6 +1599,9 @@ public class Transaction
           Optional.ofNullable(versionedHashes),
           Optional.ofNullable(blobsWithCommitments),
           codeDelegationAuthorizations,
+          pqcAlgorithmId,
+          pqcPublicKey,
+          pqcSignature,
           Optional.ofNullable(rawRlp),
           hash,
           sizeForAnnouncement,
@@ -1531,6 +1635,8 @@ public class Transaction
                   accessList,
                   versionedHashes,
                   codeDelegationAuthorizations,
+                  pqcAlgorithmId,
+                  pqcPublicKey,
                   chainId),
               keys);
     }
@@ -1558,6 +1664,21 @@ public class Transaction
 
     public Builder codeDelegations(final List<CodeDelegation> codeDelegations) {
       this.codeDelegationAuthorizations = Optional.ofNullable(codeDelegations);
+      return this;
+    }
+
+    public Builder pqcAlgorithmId(final Byte pqcAlgorithmId) {
+      this.pqcAlgorithmId = Optional.ofNullable(pqcAlgorithmId);
+      return this;
+    }
+
+    public Builder pqcPublicKey(final Bytes pqcPublicKey) {
+      this.pqcPublicKey = Optional.ofNullable(pqcPublicKey);
+      return this;
+    }
+
+    public Builder pqcSignature(final Bytes pqcSignature) {
+      this.pqcSignature = Optional.ofNullable(pqcSignature);
       return this;
     }
   }

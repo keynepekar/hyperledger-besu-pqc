@@ -20,6 +20,10 @@ import static org.hyperledger.besu.evm.worldstate.CodeDelegationHelper.hasCodeDe
 
 import org.hyperledger.besu.crypto.SECPSignature;
 import org.hyperledger.besu.crypto.SignatureAlgorithmFactory;
+import org.hyperledger.besu.crypto.pqc.PQCPublicKey;
+import org.hyperledger.besu.crypto.pqc.PQCSignature;
+import org.hyperledger.besu.crypto.pqc.SignatureAlgorithmFactoryPQC;
+import org.hyperledger.besu.crypto.pqc.SignatureAlgorithmPQC;
 import org.hyperledger.besu.datatypes.BlobType;
 import org.hyperledger.besu.datatypes.CodeDelegation;
 import org.hyperledger.besu.datatypes.Hash;
@@ -36,6 +40,7 @@ import java.math.BigInteger;
 import java.util.Optional;
 import java.util.Set;
 
+import org.apache.tuweni.bytes.Bytes;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,6 +99,52 @@ public class MainnetTransactionValidator implements TransactionValidator {
     if (!signatureResult.isValid()) {
       return signatureResult;
     }
+
+    // ----- HYBRID -----
+    if (transaction.getType() == TransactionType.HYBRID) {
+      if (transaction.getPqcAlgorithmId().isEmpty()
+          || transaction.getPqcPublicKey().isEmpty()
+          || transaction.getPqcSignature().isEmpty()) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Missing PQC fields in Hybrid Transaction");
+      }
+
+      final byte algId = transaction.getPqcAlgorithmId().get();
+      final SignatureAlgorithmPQC pqc;
+      try {
+        pqc = SignatureAlgorithmFactoryPQC.getInstance(algId);
+      } catch (final IllegalArgumentException e) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Unsupported PQC algorithm ID");
+      }
+
+      final Bytes pubKeyBytes = transaction.getPqcPublicKey().get();
+      final Bytes sigBytes = transaction.getPqcSignature().get();
+
+      if (pubKeyBytes.size() != pqc.publicKeyLength()) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC public key length");
+      }
+      if (!pqc.isSignatureLengthValid(sigBytes.size())) {
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "Invalid PQC signature length");
+      }
+
+      final PQCPublicKey publicKey = pqc.createPublicKey(pubKeyBytes);
+      final PQCSignature signature = pqc.createSignature(sigBytes);
+
+      // getSenderRecoveryHash() returns the hash for ECDSA recovery (keccak of new
+      // rlp encoding), also used for building the PQ signature
+      final boolean ok = pqc.verify(transaction.getSenderRecoveryHash(), signature, publicKey);
+      if (!ok) {
+        LOG.info("PQC signature invalid");
+        return ValidationResult.invalid(
+            TransactionInvalidReason.INVALID_SIGNATURE, "PQC signature invalid");
+      } else {
+        // LOG.info("PQC signature valid");
+      }
+    }
+    // ----- HYBRID -----
 
     final TransactionType transactionType = transaction.getType();
     if (!acceptedTransactionTypes.contains(transactionType)) {

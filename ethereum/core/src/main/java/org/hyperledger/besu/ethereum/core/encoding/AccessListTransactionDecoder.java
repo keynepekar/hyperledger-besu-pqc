@@ -55,17 +55,7 @@ class AccessListTransactionDecoder {
             .value(Wei.of(txRlp.readUInt256Scalar()))
             .payload(txRlp.readBytes())
             .rawRlp(txRlp.raw())
-            .accessList(
-                txRlp.readList(
-                    accessListEntryRLPInput -> {
-                      accessListEntryRLPInput.enterList();
-                      final AccessListEntry accessListEntry =
-                          new AccessListEntry(
-                              Address.wrap(accessListEntryRLPInput.readBytes()),
-                              accessListEntryRLPInput.readList(RLPInput::readBytes32));
-                      accessListEntryRLPInput.leaveList();
-                      return accessListEntry;
-                    }))
+            .accessList(readAccessList(txRlp))
             .sizeForAnnouncement(input.size())
             .sizeForBlockInclusion(input.size())
             .hash(Hash.hash(input));
@@ -82,5 +72,18 @@ class AccessListTransactionDecoder {
             .build();
     txRlp.leaveList();
     return transaction;
+  }
+
+  public static java.util.List<AccessListEntry> readAccessList(final RLPInput rlpInput) {
+    return rlpInput.readList(
+        accessListEntryRLPInput -> {
+          accessListEntryRLPInput.enterList();
+          final AccessListEntry accessListEntry =
+              new AccessListEntry(
+                  Address.wrap(accessListEntryRLPInput.readBytes()),
+                  accessListEntryRLPInput.readList(RLPInput::readBytes32));
+          accessListEntryRLPInput.leaveList();
+          return accessListEntry;
+        });
   }
 }

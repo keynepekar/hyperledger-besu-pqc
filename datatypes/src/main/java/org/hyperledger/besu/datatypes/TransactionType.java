@@ -29,24 +29,30 @@ public enum TransactionType {
   /** Blob transaction type. */
   BLOB(0x03),
   /** Eip7702 transaction type. */
-  DELEGATE_CODE(0x04);
+  DELEGATE_CODE(0x04),
+  /** Hybrid transaction type. */
+  HYBRID(0x05);
 
   private static final Set<TransactionType> ACCESS_LIST_SUPPORTED_TRANSACTION_TYPES =
-      EnumSet.of(ACCESS_LIST, EIP1559, BLOB, DELEGATE_CODE);
+      EnumSet.of(ACCESS_LIST, EIP1559, BLOB, DELEGATE_CODE, HYBRID);
 
   private static final Set<TransactionType> LEGACY_FEE_MARKET_TRANSACTION_TYPES =
       EnumSet.of(FRONTIER, ACCESS_LIST);
 
-  // The theoretical boundaries of the first byte of the RLP of a Frontier transaction.
+  // The theoretical boundaries of the first byte of the RLP of a Frontier
+  // transaction.
   // In practice Frontier transactions almost always start with 0xf8 or 0xf9.
   private static final byte MIN_LEGACY_TX_OPAQUE_BYTE = (byte) 0xc0;
   private static final byte MAX_LEGACY_TX_OPAQUE_BYTE = (byte) 0xfe;
 
-  // This array helps to translate the first opaque byte of an RLP encoded transaction
+  // This array helps to translate the first opaque byte of an RLP encoded
+  // transaction
   // to its type.
-  // Note that Frontier type occupies more slots, since there are different first byte values,
+  // Note that Frontier type occupies more slots, since there are different first
+  // byte values,
   // that represent such type.
-  // Holes in the array represents invalid first byte values, for which there is not (yet)
+  // Holes in the array represents invalid first byte values, for which there is
+  // not (yet)
   // a defined transaction type
   private static final TransactionType[] transactionTypeByOpaqueByte =
       new TransactionType[Byte.toUnsignedInt(MAX_LEGACY_TX_OPAQUE_BYTE) + 1];

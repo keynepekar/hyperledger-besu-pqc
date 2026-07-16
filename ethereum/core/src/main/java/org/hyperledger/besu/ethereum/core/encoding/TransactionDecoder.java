@@ -41,7 +41,8 @@ public class TransactionDecoder {
               TransactionType.ACCESS_LIST, AccessListTransactionDecoder::decode,
               TransactionType.EIP1559, EIP1559TransactionDecoder::decode,
               TransactionType.BLOB, BlobTransactionDecoder::decode,
-              TransactionType.DELEGATE_CODE, CodeDelegationTransactionDecoder::decode));
+              TransactionType.DELEGATE_CODE, CodeDelegationTransactionDecoder::decode,
+              TransactionType.HYBRID, HybridTransactionDecoder::decode));
 
   private static final EnumMap<TransactionType, Decoder> POOLED_TRANSACTION_DECODERS =
       new EnumMap<>(Map.of(TransactionType.BLOB, BlobPooledTransactionDecoder::decode));
@@ -95,8 +96,10 @@ public class TransactionDecoder {
       final Bytes transactionBytes,
       final TransactionType transactionType,
       final EncodingContext context) {
-    // Slice the transaction bytes to exclude the transaction type and prepare for decoding
-    // Use the appropriate decoder for the transaction type to decode the remaining bytes
+    // Slice the transaction bytes to exclude the transaction type and prepare for
+    // decoding
+    // Use the appropriate decoder for the transaction type to decode the remaining
+    // bytes
     return getDecoder(transactionType, context).decode(transactionBytes);
   }
 

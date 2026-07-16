@@ -115,6 +115,17 @@ public class TransactionTestFixture {
         builder.accessList(accessListEntries.orElse(List.of()));
         builder.codeDelegations(codeDelegations.orElse(List.of(CODE_DELEGATION)));
         break;
+      case HYBRID:
+        // fake hybrid ml-dsa-44 transaction
+        // hard-coded for testing purposes
+        // TODO: modify this later!!
+        builder.maxPriorityFeePerGas(maxPriorityFeePerGas.orElse(Wei.of(500)));
+        builder.maxFeePerGas(maxFeePerGas.orElse(Wei.of(5000)));
+        builder.accessList(accessListEntries.orElse(List.of()));
+        builder.pqcAlgorithmId((byte) 1);
+        builder.pqcPublicKey(Bytes.wrap(new byte[1312]));
+        builder.pqcSignature(Bytes.wrap(new byte[2420]));
+        break;
     }
 
     to.ifPresent(builder::to);
